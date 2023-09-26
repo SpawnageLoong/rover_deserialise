@@ -17,8 +17,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <string>
-#include <atomic>
-#include <signal.h>
+#include <fstream>
 #include "rclcpp/rclcpp.hpp"
 #include "rover_interfaces/msg/sensor_data.hpp"
 
@@ -194,29 +193,30 @@ int main(int argc, char** argv)
     rclcpp::init(argc, argv);
     auto node = std::make_shared<DeserialPublisher>();
 
-    SerialPort serialPort("/dev/pts/6", B115200);
+    //SerialPort serialPort("/dev/pts/6", B115200);
+    std::ifstream serialPort("/dev/pts/6");
+    if (!serialPort) {
+        std::cerr << "Error: Cannot open the specified serial port." << std::endl;
+        return 1;
+    }
     std::cout << "Serial port opened" << std::endl;
+    
     //serialPort.startListening(serialCallback, sensorData);
 
     std::thread listenerThread([&]()
     {
+        std::string line;
         while (true)
         {
-            char delim_buffer;
-            serialPort.readData(&delim_buffer, (size_t) 1);
-            if (delim_buffer != 0x0A)
-            {
-                continue;
+            std::getline(serialPort, line);
+            if (!serialPort) {
+                std::cerr << "Error reading from the serial port." << std::endl;
+                break;
             }
-            serialPort.readData(&delim_buffer, (size_t) 1);
-            if (delim_buffer != 0x24)
-            {
-                continue;
-            }
-            serialPort.readData(buffer, (size_t) 56);
-            serialCallback(buffer, sensorData);
+            std::cout << "Received: " << line << std::endl;
         }
     });
+    listenerThread.detach();
 
     std::thread timerThread([&]()
     {
