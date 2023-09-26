@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <string>
 #include "rclcpp/rclcpp.hpp"
+#include "rover_interfaces/msg/sensor_data.hpp"
 
 class DeserialPublisher : public rclcpp::Node
 {
@@ -25,11 +26,24 @@ class DeserialPublisher : public rclcpp::Node
         DeserialPublisher()
         : Node("deserial_publisher")
         {
+            this->declare_parameter("sensor_data_topic_name", "/sensor_data");
 
+            publisher_ =
+                this->create_publisher<rover_interfaces::msg::SensorData>(
+                    this->get_parameter("sensor_data_topic_name").as_string(),
+                    rclcpp::SensorDataQoS()
+                );
+        }
+
+        setExtTemp0(uint16_t value)
+        {
+            ext_temp0 = value;
         }
     
     private:
+        auto message = rover_interfaces::msg::SensorData();
 
+        rclcpp::Publisher<rover_interfaces::msg::SensorData>::SharedPtr publisher_;
 };
 
 class SerialPort {
@@ -108,6 +122,10 @@ int main(int argc, char** argv)
 {
     rclcpp::init(argc, argv);
     rclcpp::spin(std::make_shared<DeserialPublisher>());
+
+    SerialPort serialPort("/dev/pts/5", B115200);
+    std::cout << "Serial port opened" << std::endl;
+    
     rclcpp::shutdown();
     return 0;
 }
