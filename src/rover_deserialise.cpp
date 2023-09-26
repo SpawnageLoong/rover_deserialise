@@ -45,107 +45,6 @@ class DeserialPublisher : public rclcpp::Node
         rclcpp::Publisher<rover_interfaces::msg::SensorData>::SharedPtr publisher_;
 };
 
-class SerialPort {
-    public:
-        SerialPort(const char* portName, speed_t baudRate)
-        {
-            fd_ = open(portName, O_RDWR);
-            if (fd_ == -1)
-            {
-                std::cout << "Error opening serial port" << std::endl;
-                return;
-            }
-
-            struct termios tty;
-            if (tcgetattr(fd_, &tty) != 0)
-            {
-                std::cout << "Error getting serial port attributes" << std::endl;
-                return;
-            }
-
-            cfsetospeed(&tty, baudRate);
-            cfsetispeed(&tty, baudRate);
-
-            tty.c_cflag &= ~PARENB;
-            tty.c_cflag &= ~CSTOPB;
-            tty.c_cflag &= ~CSIZE;
-            tty.c_cflag |= CS8;
-            tty.c_cflag &= ~CREAD;
-            tty.c_cflag |= CLOCAL;
-
-            if (tcsetattr(fd_, TCSANOW, &tty) != 0)
-            {
-                std::cout << "Error setting serial port attributes" << std::endl;
-                return;
-            }
-        }
-
-        ~SerialPort()
-        {
-            stopListening();
-            if (isOpen())
-            {
-                close(fd_);
-            }
-        }
-
-        bool isOpen()
-        {
-            return fd_ != -1;
-        }
-
-        bool WriteData(const char* data, size_t length)
-        {
-            if (!isOpen())
-            {
-                return false;
-            }
-            ssize_t bytesWritten = write(fd_, data, length);
-            return bytesWritten == static_cast<ssize_t>(length);
-        }
-
-        size_t readData(char* buffer, size_t maxLength)
-        {
-            if (!isOpen())
-            {
-                return -1;
-            }
-            ssize_t bytesRead = read(fd_, buffer, maxLength);
-            return bytesRead;
-        }
-
-        void startListening(std::function<void(const char*, rover_interfaces::msg::SensorData&)> callback, rover_interfaces::msg::SensorData &sensorData)
-        {
-            if (!isOpen() || listening_) {
-                return;
-            }
-
-            listening_ = true;
-            listenerThread_ = std::thread([this, callback, &sensorData]() {
-                char buffer[256];
-                while (listening_) {
-                    ssize_t bytesRead = read(fd_, buffer, sizeof(buffer));
-                    if (bytesRead > 0) {
-                        callback(buffer, sensorData);
-                    }
-                }
-            });
-        }
-
-        void stopListening()
-        {
-            listening_ = false;
-            if (listenerThread_.joinable()) {
-                listenerThread_.join();
-            }
-        }
-
-    private:
-        int fd_;
-        std::thread listenerThread_;
-        std::atomic<bool> listening_{false};
-};
-
 void serialCallback(const char* buffer, rover_interfaces::msg::SensorData &sensorData)
 {
     std::string str(buffer);
@@ -193,15 +92,12 @@ int main(int argc, char** argv)
     rclcpp::init(argc, argv);
     auto node = std::make_shared<DeserialPublisher>();
 
-    //SerialPort serialPort("/dev/pts/6", B115200);
     std::ifstream serialPort("/dev/pts/6");
     if (!serialPort) {
         std::cerr << "Error: Cannot open the specified serial port." << std::endl;
         return 1;
     }
     std::cout << "Serial port opened" << std::endl;
-    
-    //serialPort.startListening(serialCallback, sensorData);
 
     std::thread listenerThread([&]()
     {
@@ -229,7 +125,6 @@ int main(int argc, char** argv)
     timerThread.detach();
     rclcpp::spin(node);
 
-    //serialPort.stopListening();
     rclcpp::shutdown();
     return 0;
 }
