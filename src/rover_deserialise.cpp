@@ -47,21 +47,25 @@ class DeserialPublisher : public rclcpp::Node
 
 void serialCallback(const char* buffer, rover_interfaces::msg::SensorData &sensorData)
 {
-    std::string str(buffer);
-    std::cout << "Received serial data" << std::endl;
-    std::cout << str << std::endl;
-    std::cout << "Received serial data" << std::endl;
-    std::cout << buffer << std::endl;
-    std::cout << "Buffer[0]: " << buffer[0] << std::endl;
-    char a = buffer[0];
-    std::cout << "a: " << a << std::endl;
-    sensorData.ext_temp0 = (uint16_t) str[0]  << 8  | (uint16_t) str[0];
-    std::cout << "buffer[0]: " << std::bitset<8>(str[0]) << std::endl;
-    std::cout << "buffer[1]: " << std::bitset<8>(str[1]) << std::endl;
-    std::cout << "buffer[0]: " << (int) str[0] << std::endl;
-    std::cout << "buffer[1]: " << (int) str[1] << std::endl;
-    std::cout << "External temperature 0 binary: " << std::bitset<16>(sensorData.ext_temp0) << std::endl;
-    std::cout << "Char encoding: " << str[0] << std::endl;
+    sensorData.ext_temp0 = (uint16_t) buffer[1]  << 8  | (uint16_t) buffer[2];
+    sensorData.int_temp0 = (uint16_t) buffer[3]  << 8  | (uint16_t) buffer[4];
+    sensorData.int_hum0  = (uint16_t) buffer[5]  << 8  | (uint16_t) buffer[6];
+    sensorData.int_temp1 = (uint16_t) buffer[7]  << 8  | (uint16_t) buffer[8];
+    sensorData.int_hum1  = (uint16_t) buffer[9]  << 8  | (uint16_t) buffer[10];
+    sensorData.int_temp2 = (uint16_t) buffer[11] << 8  | (uint16_t) buffer[12];
+    sensorData.int_hum2  = (uint16_t) buffer[13] << 8  | (uint16_t) buffer[14];
+    sensorData.int_pres0 = (uint16_t) buffer[15] << 8  | (uint16_t) buffer[16];
+    sensorData.int_alt   = (int16_t)  buffer[17] << 8  | (int16_t)  buffer[18];
+    sensorData.accel_x   = (int32_t)  buffer[19] << 24 | (int32_t)  buffer[20] << 16 | (int32_t)  buffer[21] << 8 | (int32_t)  buffer[22];
+    sensorData.accel_y   = (int32_t)  buffer[23] << 24 | (int32_t)  buffer[24] << 16 | (int32_t)  buffer[25] << 8 | (int32_t)  buffer[26];
+    sensorData.accel_z   = (int32_t)  buffer[27] << 24 | (int32_t)  buffer[28] << 16 | (int32_t)  buffer[29] << 8 | (int32_t)  buffer[30];
+    sensorData.gyro_x    = (int32_t)  buffer[31] << 24 | (int32_t)  buffer[32] << 16 | (int32_t)  buffer[33] << 8 | (int32_t)  buffer[34];
+    sensorData.gyro_y    = (int32_t)  buffer[35] << 24 | (int32_t)  buffer[36] << 16 | (int32_t)  buffer[37] << 8 | (int32_t)  buffer[38];
+    sensorData.gyro_z    = (int32_t)  buffer[39] << 24 | (int32_t)  buffer[40] << 16 | (int32_t)  buffer[41] << 8 | (int32_t)  buffer[42];
+    sensorData.mag_x     = (int32_t)  buffer[43] << 24 | (int32_t)  buffer[44] << 16 | (int32_t)  buffer[45] << 8 | (int32_t)  buffer[46];
+    sensorData.mag_y     = (int32_t)  buffer[47] << 24 | (int32_t)  buffer[48] << 16 | (int32_t)  buffer[49] << 8 | (int32_t)  buffer[50];
+    sensorData.mag_z     = (int32_t)  buffer[51] << 24 | (int32_t)  buffer[52] << 16 | (int32_t)  buffer[53] << 8 | (int32_t)  buffer[54];
+    sensorData.int_temp3 = (uint16_t) buffer[55] << 8  | (uint16_t) buffer[56];
 }
 
 void timer(std::function<void(void)> func, unsigned int interval)
@@ -87,7 +91,6 @@ int main(int argc, char** argv)
 {
     signal(SIGINT, signalHandler);
     rover_interfaces::msg::SensorData sensorData;
-    char buffer[256];
 
     rclcpp::init(argc, argv);
     auto node = std::make_shared<DeserialPublisher>();
@@ -110,6 +113,7 @@ int main(int argc, char** argv)
                 break;
             }
             std::cout << "Received: " << line << std::endl;
+            serialCallback(line.c_str(), sensorData);
         }
     });
     listenerThread.detach();
