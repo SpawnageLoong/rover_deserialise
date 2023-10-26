@@ -95,7 +95,7 @@ int main(int argc, char** argv)
     rclcpp::init(argc, argv);
     auto node = std::make_shared<DeserialPublisher>();
 
-    std::ifstream serialPort("/dev/pts/6");
+    std::ifstream serialPort("/dev/ttyESPsensors");
     if (!serialPort) {
         std::cerr << "Error: Cannot open the specified serial port." << std::endl;
         return 1;
